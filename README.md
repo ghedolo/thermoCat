@@ -1,8 +1,12 @@
+
+
+
+
 # thermoCat
 
 ESP32 device that plays cat sounds (**purr / meow / hiss**) based on the temperature measured by an infrared sensor, with MQTT telemetry and remote volume control.
 
-https://github.com/user-attachments/assets/replace-after-first-push
+https://github.com/user-attachments/assets/72bdd09d-ae5b-4d37-b40d-60c8baf312e8
 
 ## Features
 
