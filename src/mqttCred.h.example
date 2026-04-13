@@ -1,0 +1,7 @@
+#pragma once
+
+const char* MQTT_SERVER = "your_broker_ip";
+const int   MQTT_PORT   = 8883;
+const char* MQTT_USER   = "your_user";
+const char* MQTT_PASS   = "your_password";
+const char* START_TOPIC = "your/start/topic";

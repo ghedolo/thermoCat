@@ -1,0 +1,13 @@
+ESP32 — MLX90614 (I2C)
+  SDA  → GPIO21
+  SCL  → GPIO22
+  VCC  → 3.3V
+  GND  → GND
+
+ESP32 — MAX98357A (I2S)
+  BCLK → GPIO26
+  LRC  → GPIO25
+  DIN  → GPIO27
+  VIN  → 3.3V (or 5V)
+  GND  → GND
+  SD   → unconnected (floating = enabled)
