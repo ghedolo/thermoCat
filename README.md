@@ -4,6 +4,8 @@
 
 # thermoCat
 
+> *The thermometer for people who love cats and hate taking their own temperature.* Point it at your forehead and instead of a cold clinical number you get a purr, a meow, or an angry hiss. Fever? The cat will let you know — loudly.
+
 ESP32 device that plays cat sounds (**purr / meow / hiss**) based on the temperature measured by an infrared sensor, with MQTT telemetry and remote volume control.
 
 https://github.com/user-attachments/assets/72bdd09d-ae5b-4d37-b40d-60c8baf312e8
