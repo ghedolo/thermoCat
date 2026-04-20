@@ -99,7 +99,7 @@ Default volume is 15 %.
 
 ## Speaker characterization
 
-The loudspeaker used in this build was characterized in a separate project. The resulting 1/3-octave response is stored in [`C2_F3a_freq_response.json`](C2_F3a_freq_response.json) and compiled into [`include/freq_compensation.h`](include/freq_compensation.h) as a per-band gain table applied at playback time to flatten the output.
+The loudspeaker used in this build was characterized in a [separate project](https://github.com/ghedolo/esp32-speaker-calibration). The resulting 1/3-octave response is stored in [`C2_F3a_freq_response.json`](C2_F3a_freq_response.json) and compiled into [`include/freq_compensation.h`](include/freq_compensation.h) as a per-band gain table applied at playback time to flatten the output.
 
 ## Project layout
 
