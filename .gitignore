@@ -5,3 +5,4 @@ src/mqttCred.h
 *.pyc
 __pycache__/
 .DS_Store
+*.pdf
