@@ -21,13 +21,15 @@ https://github.com/user-attachments/assets/72bdd09d-ae5b-4d37-b40d-60c8baf312e8
 
 ## Temperature → sound mapping
 
-| Temperature | Sound | Behavior |
+The MLX90614 reads both object (Tir) and ambient (Tamb) temperatures. Sound selection is based on the relationship between the two:
+
+| Condition | Sound | Behavior |
 |---|---|---|
-| `< 20 °C` | Purr | Relaxed cat |
-| `20 – 24 °C` | Purr + Meow (crossfade) | Transition |
-| `24 – 34 °C` | Meow | Cat asking for attention |
-| `34 – 38 °C` | Meow + Hiss (crossfade) | Transition |
-| `> 38 °C` | Hiss | Irritated cat |
+| `Tir < Tamb` | Purr | Relaxed cat |
+| `Tamb ≤ Tir < 37 °C` | Purr + Meow (crossfade) | Transition |
+| `Tir = 37 °C` | Meow | Cat asking for attention |
+| `37 °C < Tir < 38.5 °C` | Meow + Hiss (crossfade) | Transition |
+| `Tir ≥ 38.5 °C` | Hiss | Irritated cat |
 
 ## Hardware
 
@@ -86,7 +88,7 @@ cp src/mqttCred.h.example src/mqttCred.h
 ./upload.sh    # pio run -e esp32 -t upload
 ```
 
-On first boot, if no WiFi credentials are stored in NVS, the firmware will prompt for SSID and password over the serial console (115200 baud).
+On first boot, if no WiFi credentials are stored in NVS, the firmware will prompt for SSID and password over the serial console (9600 baud).
 
 ### Serial commands
 
@@ -94,6 +96,7 @@ On first boot, if no WiFi credentials are stored in NVS, the firmware will promp
 |---|---|
 | `>` | Volume +5 % |
 | `<` | Volume −5 % |
+| `r` | Reset (ESP.restart()) |
 
 Default volume is 15 %.
 
@@ -136,8 +139,8 @@ Built with [Claude Code](https://claude.ai/claude-code) by Anthropic.
 This project was built entirely through a conversation with Claude Code. The numbers below are extracted from the local session transcripts (`~/.claude/projects/.../*.jsonl`).
 
 - **First message:** 2026-03-21 10:14 UTC
-- **Last message:** 2026-04-13 19:24 UTC
-- **Calendar span:** ~23 days, 2 sessions, 432 messages (153 user + 189 assistant)
+- **Last message:** 2026-04-21 UTC
+- **Calendar span:** ~31 days, 3 sessions
 - **Active conversation time: ~50 minutes**
 
 *How active time is computed:* every message in the transcripts carries a timestamp. The timestamps are sorted and the gap between each consecutive pair is measured. Only gaps shorter than or equal to 5 minutes are summed, the rest are discarded. The idea is to count the time when a conversation was actually in progress (including natural pauses for reading, compiling, flashing, checking the hardware) while ignoring long idle periods (overnight breaks, days off, switching to other work). The 5-minute threshold is a rough but reasonable compromise; raising or lowering it shifts the total accordingly.

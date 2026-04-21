@@ -13,7 +13,7 @@
 #include "hiss_sample.h"
 #include "mqttCred.h"
 
-// ── I2S pins (MAX98357A) ──
+// ── Pin I2S (MAX98357A) ──
 #define I2S_BCLK  26
 #define I2S_LRC   25
 #define I2S_DOUT  27
@@ -24,15 +24,15 @@
 #define DMA_BUF_COUNT 4
 #define DMA_BUF_LEN   256
 
-// ── Temperature -> behavior ──
-//  < 20C  -> purr   — relaxed cat
-// 20–30C  -> meow   — cat asking for attention
-//  > 30C  -> hiss   — irritated cat
-// Smooth transitions with crossfade
+// ── Temperatura -> comportamento ──
+//  < 20C  -> fusa (purring)  — gatto rilassato
+// 20–30C  -> miao (meow)     — gatto che chiede attenzione
+//  > 30C  -> soffio (hiss)   — gatto irritato
+// Transizioni morbide con crossfade
 
 Adafruit_MLX90614 mlx;
 
-// ── Volume (0.0 – 1.0) — low default ──
+// ── Volume (0.0 – 1.0) — default basso ──
 volatile float master_volume = 0.15f;
 
 // ── WiFi NVS + MQTT ──
@@ -61,7 +61,7 @@ String serialReadLine() {
 }
 
 void wifiAskCredentials() {
-    Serial.println("\n== WiFi Configuration ==");
+    Serial.println("\n== Configurazione WiFi ==");
     Serial.print("SSID: ");
     String ssid = serialReadLine();
     Serial.println();
@@ -73,7 +73,7 @@ void wifiAskCredentials() {
     prefs.putString("ssid", ssid);
     prefs.putString("pass", pass);
     prefs.end();
-    Serial.println("Credentials saved to NVS.");
+    Serial.println("Credenziali salvate in NVS.");
 }
 
 bool wifiConnect() {
@@ -103,14 +103,14 @@ bool wifiConnect() {
 
 void wifiSetup() {
     while (!wifiConnect()) {
-        Serial.println("WiFi not connected. Missing or invalid credentials.");
+        Serial.println("WiFi non connesso. Credenziali errate o assenti.");
         wifiAskCredentials();
     }
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
     String topicStr(topic);
-    String volTopic = String(START_TOPIC) + "/cat/cmd/volume";
+    String volTopic = String(START_TOPIC) + "/gatto/cmd/volume";
     if (topicStr == volTopic) {
         char buf[8];
         int len = (length < 7) ? length : 7;
@@ -132,18 +132,18 @@ void mqttConnect() {
     if (now - lastMqttReconnect < 5000) return;
     lastMqttReconnect = now;
 
-    Serial.print("MQTT connecting...");
-    String clientId = "thermocat-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    Serial.print("MQTT connessione...");
+    String clientId = "gatto-" + String((uint32_t)ESP.getEfuseMac(), HEX);
     if (mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
         Serial.println(" OK");
 
-        // Publish system info on separate retained topics
-        String base = String(START_TOPIC) + "/cat/system/";
-        mqtt.publish((base + "name").c_str(), "thermoCat", true);
+        // Pubblica info sistema su topic separati (retained)
+        String base = String(START_TOPIC) + "/gatto/system/";
+        mqtt.publish((base + "name").c_str(), "netGatto", true);
         mqtt.publish((base + "compiled").c_str(), __DATE__ " " __TIME__, true);
 
-        // Subscribe to volume command
-        String volTopic = String(START_TOPIC) + "/cat/cmd/volume";
+        // Subscribe volume
+        String volTopic = String(START_TOPIC) + "/gatto/cmd/volume";
         mqtt.subscribe(volTopic.c_str());
         Serial.printf("Sub: %s\n", volTopic.c_str());
     } else {
@@ -151,16 +151,17 @@ void mqttConnect() {
     }
 }
 
-// ── Synthesis state ──
+// ── Stato sintesi ──
 float phase_meow      = 0;
 float meow_time       = 0;
 
 float current_temp  = 25.0f;
 float smoothed_temp = 25.0f;
+float smoothed_amb  = 25.0f;
 
-// ── Debug: column counter for line wrap ──
-// Sounds: \ purr, | meow, / hiss
-// Index: 3 binary bits, _ = 0, - = 1
+// ── Debug: contatore caratteri per a capo ──
+// Suoni: \ fusa, | miagolo, / soffio
+// Indice: 3 bit binari, _ = 0, - = 1
 volatile int debug_col = 0;
 void debugSound(char tag, int idx) {
     char buf[5] = {
@@ -178,10 +179,10 @@ void debugSound(char tag, int idx) {
     }
 }
 
-// ── Random — three separate generators ──
-uint32_t noise_seed = 12345;   // for audio noise (hiss)
-uint32_t meow_rng = 67890;     // for meow choices (sample/pause)
-uint32_t purr_rng = 54321;     // for purr choices (sample/pause)
+// ── Random — tre generatori separati ──
+uint32_t noise_seed = 12345;   // per rumore audio (hiss)
+uint32_t meow_rng = 67890;     // per scelte meow (campione/pausa)
+uint32_t purr_rng = 54321;     // per scelte purr (campione/pausa)
 
 uint32_t xorshift32(uint32_t &seed) {
     seed ^= seed << 13;
@@ -195,7 +196,7 @@ float whiteNoise() {
 }
 
 
-// ── PURR from real sample with crossfade and pauses ──
+// ── PURR da campione reale con crossfade e pause ──
 int purr_cur_idx = 0;
 int purr_cur_pos = 0;
 int purr_next_idx = -1;
@@ -294,11 +295,11 @@ float synthPurr(float intensity) {
     return s * intensity * 0.6f;
 }
 
-// ── MEOW from real sample ──
-int meow_sample_idx = 0;      // which sample is playing
-int meow_play_pos = -1;       // position in sample (-1 = pause)
-int meow_pause_counter = 0;   // remaining pause samples
-int meow_next_pause = 0;      // pause before next meow
+// ── MEOW da campione reale ──
+int meow_sample_idx = 0;      // quale campione sta suonando
+int meow_play_pos = -1;       // posizione nel campione (-1 = pausa)
+int meow_pause_counter = 0;   // campioni di pausa rimanenti
+int meow_next_pause = 0;      // pausa prima del prossimo miao
 
 void meowStartNext() {
     meow_rng ^= (uint32_t)esp_timer_get_time();
@@ -308,7 +309,7 @@ void meowStartNext() {
 }
 
 void meowSchedulePause() {
-    // Random pause between 4 and 10 seconds (~4-8 meows/minute)
+    // Pausa random tra 4 e 10 secondi (~4-8 miao/minuto)
     meow_rng ^= (uint32_t)esp_timer_get_time();
     int min_pause = 4 * SAMPLE_RATE;
     int max_pause = 10 * SAMPLE_RATE;
@@ -318,7 +319,7 @@ void meowSchedulePause() {
 
 float synthMeow(float intensity) {
     if (meow_play_pos < 0) {
-        // Paused
+        // In pausa
         meow_pause_counter--;
         if (meow_pause_counter <= 0) {
             meowStartNext();
@@ -326,7 +327,7 @@ float synthMeow(float intensity) {
         return 0;
     }
 
-    // Play sample
+    // Suona campione
     int len = MEOW_LENGTHS[meow_sample_idx];
     if (meow_play_pos >= len) {
         meowSchedulePause();
@@ -339,7 +340,7 @@ float synthMeow(float intensity) {
     return sample * intensity * 0.5f;
 }
 
-// ── HISS from real sample ──
+// ── HISS da campione reale ──
 int hiss_sample_idx = 0;
 int hiss_play_pos = -1;
 int hiss_pause_counter = 0;
@@ -406,29 +407,32 @@ void setupI2S() {
     i2s_zero_dma_buffer(I2S_PORT);
 }
 
-// ── Audio buffer ──
+// ── Buffer audio ──
 int16_t audio_buf[DMA_BUF_LEN * 2];  // stereo
 
 void fillBuffer() {
 
-    // Temperature zones:
-    //  < 20C  -> purr
-    // 20-24C  -> crossfade purr -> meow
-    // 24-34C  -> meow (wide zone)
-    // 34-38C  -> crossfade meow -> hiss
-    //  > 38C  -> hiss
+    // Logica: Tir vs Tamb
+    //  Tir < Tamb          -> fusa
+    //  Tamb <= Tir < 37C   -> fade fusa->miao
+    //  Tir >= 37C < 38.5C  -> fade miao->soffio
+    //  Tir >= 38.5C        -> soffio
     float purr_int = 0, meow_int = 0, hiss_int = 0;
+    float tir  = smoothed_temp;
+    float tamb = smoothed_amb;
+    float t;
 
-    if (smoothed_temp < 20.0f) {
+    if (tir < tamb) {
         purr_int = 1.0f;
-    } else if (smoothed_temp < 24.0f) {
-        float t = (smoothed_temp - 20.0f) / 4.0f;
+    } else if (tir < 37.0f) {
+        float range = 37.0f - tamb;
+        t = (range > 0.5f) ? (tir - tamb) / range : 1.0f;
+        if (t < 0.0f) t = 0.0f;
+        if (t > 1.0f) t = 1.0f;
         purr_int = 1.0f - t;
         meow_int = t;
-    } else if (smoothed_temp < 34.0f) {
-        meow_int = 1.0f;
-    } else if (smoothed_temp < 38.0f) {
-        float t = (smoothed_temp - 34.0f) / 4.0f;
+    } else if (tir < 38.5f) {
+        t = (tir - 37.0f) / 1.5f;
         meow_int = 1.0f - t;
         hiss_int = t;
     } else {
@@ -442,7 +446,7 @@ void fillBuffer() {
         if (meow_int > 0.01f) sample += synthMeow(meow_int);
         if (hiss_int > 0.01f) sample += synthHiss(hiss_int);
 
-        // Master volume + soft clip (low gain to avoid distortion)
+        // Volume master + soft clip (gain basso per evitare distorsione)
         sample *= master_volume;
         if (sample > 0.9f) sample = 0.9f;
         else if (sample < -0.9f) sample = -0.9f;
@@ -453,7 +457,7 @@ void fillBuffer() {
     }
 }
 
-// ── Audio task (core 1) ──
+// ── Task audio (core 1) ──
 void audioTask(void *param) {
     while (true) {
         fillBuffer();
@@ -464,10 +468,10 @@ void audioTask(void *param) {
 
 // ── Setup ──
 void setup() {
-    Serial.begin(115200);
-    Serial.println("thermoCat - starting...");
+    Serial.begin(9600);
+    Serial.println("Gatto sonoro - avvio...");
 
-    // ── WiFi from NVS (asks over serial if missing/failing) ──
+    // ── WiFi da NVS (chiede via seriale se mancano/falliscono) ──
     wifiSetup();
 
     // ── MQTT TLS ──
@@ -478,60 +482,60 @@ void setup() {
     Wire.begin(21, 22);
 
     if (!mlx.begin()) {
-        Serial.println("MLX90614 not found!");
+        Serial.println("MLX90614 non trovato!");
         while (1) delay(100);
     }
     Serial.println("MLX90614 OK");
 
     current_temp = mlx.readObjectTempC();
     smoothed_temp = current_temp;
-    Serial.printf("Initial temp: %.1fC\n", current_temp);
+    Serial.printf("Temp iniziale: %.1fC\n", current_temp);
 
-    meowSchedulePause();  // start with random pause
-    hissSchedulePause();  // start with random pause
+    meowSchedulePause();  // inizia con pausa random
+    hissSchedulePause();  // inizia con pausa random
     setupI2S();
 
-    // Audio task on core 1
+    // Audio task su core 1
     xTaskCreatePinnedToCore(audioTask, "audio", 4096, NULL, 10, NULL, 1);
 
     Serial.println("");
     Serial.println("=============================");
-    Serial.println("  thermoCat v1.0");
+    Serial.println("  TERMO GATTO v1.0");
     Serial.println("  ghedo 2026");
     Serial.printf( "  Build: %s %s\n", __DATE__, __TIME__);
     Serial.println("=============================");
     Serial.println("");
-    Serial.println("Serial commands:");
+    Serial.println("Tasti seriale:");
     Serial.println("  >  Volume +5%");
     Serial.println("  <  Volume -5%");
-    Serial.printf( "  Current volume: %.0f%%\n", master_volume * 100.0f);
+    Serial.println("  r  Reset");
+    Serial.printf( "  Volume attuale: %.0f%%\n", master_volume * 100.0f);
     Serial.println("");
-    Serial.println("MLX90614 thermometer (object):");
-    Serial.println("  < 20C      PURR");
-    Serial.println("  20-24C     PURR + MEOW");
-    Serial.println("  24-34C     MEOW");
-    Serial.println("  34-38C     MEOW + HISS");
-    Serial.println("  > 38C      HISS");
+    Serial.println("Termometro MLX90614:");
+    Serial.println("  Tir < Tamb         FUSA");
+    Serial.println("  Tamb <= Tir < 37C  FUSA + MIAO");
+    Serial.println("  37C <= Tir < 38.5C MIAO + SOFFIO");
+    Serial.println("  Tir >= 38.5C       SOFFIO");
     Serial.println("");
-    Serial.printf( "Initial temp: %.1fC\n", current_temp);
+    Serial.printf( "Temp iniziale: %.1fC\n", current_temp);
     Serial.println("=============================");
     Serial.println("");
 
-    Serial.println("Sound debug: \\ purr, | meow, / hiss");
-    Serial.println("Index: 3 bits (_ = 0, - = 1)");
+    Serial.println("Debug suoni: \\ fusa, | miao, / soffio");
+    Serial.println("Indice: 3 bit (_ = 0, - = 1)");
     Serial.println();
 
-    // First MQTT connection
+    // Prima connessione MQTT
     mqttConnect();
 }
 
-// ── Loop: temperature reading + serial volume control ──
+// ── Loop: lettura temperatura + controllo volume seriale ──
 void loop() {
     // ── MQTT ──
     if (!mqtt.connected()) mqttConnect();
     mqtt.loop();
 
-    // Volume control over serial
+    // Controllo volume da seriale
     while (Serial.available()) {
         char c = Serial.read();
         if (c == '>') {
@@ -542,33 +546,36 @@ void loop() {
             master_volume -= 0.05f;
             if (master_volume < 0.0f) master_volume = 0.0f;
             Serial.print(master_volume <= 0.0f ? "=" : "<");
+        } else if (c == 'r' || c == 'R') {
+            Serial.println("\nReset...");
+            delay(200);
+            ESP.restart();
         }
     }
 
     float raw_temp = mlx.readObjectTempC();
     float ambient_temp = mlx.readAmbientTempC();
-    // Discard bad readings (NaN or out of sensor range)
+    // Scarta letture anomale (NaN o fuori range sensore)
     if (!isnan(raw_temp) && raw_temp > -40.0f && raw_temp < 125.0f) {
         current_temp = raw_temp;
     }
     smoothed_temp += 0.3f * (current_temp - smoothed_temp);
+    smoothed_amb  += 0.3f * (ambient_temp - smoothed_amb);
 
-    // Determine current register
-    const char *state;
-    if (smoothed_temp < 20.0f)
-        state = "PURR";
-    else if (smoothed_temp < 24.0f)
-        state = "PURR+MEOW";
-    else if (smoothed_temp < 34.0f)
-        state = "MEOW";
-    else if (smoothed_temp < 38.0f)
-        state = "MEOW+HISS";
+    // Determina registro corrente
+    const char *stato;
+    if (smoothed_temp < smoothed_amb)
+        stato = "FUSA";
+    else if (smoothed_temp < 37.0f)
+        stato = "FUSA+MIAO";
+    else if (smoothed_temp < 38.5f)
+        stato = "MIAO+SOFFIO";
     else
-        state = "HISS";
+        stato = "SOFFIO";
 
-    (void)state;
+    (void)stato;
 
-    // ── Publish temperatures over MQTT ──
+    // ── Pubblica temperature MQTT ──
     if (mqtt.connected()) {
         unsigned long now = millis();
         bool changed = (fabsf(current_temp - lastPublishedObj) >= 0.5f) ||
@@ -576,7 +583,7 @@ void loop() {
         bool timeout = (now - lastTempPublish >= 60000);
 
         if (changed || timeout) {
-            String base = String(START_TOPIC) + "/cat/system/";
+            String base = String(START_TOPIC) + "/gatto/system/";
             char buf[16];
             snprintf(buf, sizeof(buf), "%.1f", current_temp);
             mqtt.publish((base + "Tir").c_str(), buf, true);
