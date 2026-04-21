@@ -139,22 +139,22 @@ Built with [Claude Code](https://claude.ai/claude-code) by Anthropic.
 This project was built entirely through a conversation with Claude Code. The numbers below are extracted from the local session transcripts (`~/.claude/projects/.../*.jsonl`).
 
 - **First message:** 2026-03-21 10:14 UTC
-- **Last message:** 2026-04-21 UTC
-- **Calendar span:** ~31 days, 3 sessions
-- **Active conversation time: ~50 minutes**
+- **Last message:** 2026-04-21 20:24 UTC
+- **Calendar span:** ~31 days, 3 sessions, 628 messages (271 user + 357 assistant)
+- **Active conversation time: ~102 minutes**
 
 *How active time is computed:* every message in the transcripts carries a timestamp. The timestamps are sorted and the gap between each consecutive pair is measured. Only gaps shorter than or equal to 5 minutes are summed, the rest are discarded. The idea is to count the time when a conversation was actually in progress (including natural pauses for reading, compiling, flashing, checking the hardware) while ignoring long idle periods (overnight breaks, days off, switching to other work). The 5-minute threshold is a rough but reasonable compromise; raising or lowering it shifts the total accordingly.
 
 ### Tokens
 
-Cumulative token counts across both sessions:
+Cumulative token counts across all sessions:
 
 | Metric | Tokens |
 |---|---:|
-| Input (non-cache) | 545 |
-| Output | 74 995 |
-| Cache write | 666 941 |
-| Cache read | 9 731 021 |
-| **Total** | **~10.5 M** |
+| Input (non-cache) | 860 |
+| Output | 135 597 |
+| Cache write | 1 075 079 |
+| Cache read | 19 760 433 |
+| **Total** | **~21 M** |
 
-Cache-read tokens dominate because every turn re-reads the existing context from the prompt cache (this is the standard accounting for cached prompts: the tokens are billed at a reduced rate but still counted). The "real" output produced by the model is ~75 k tokens; new context accumulated into the cache is ~667 k tokens.
+Cache-read tokens dominate because every turn re-reads the existing context from the prompt cache (this is the standard accounting for cached prompts: the tokens are billed at a reduced rate but still counted). The "real" output produced by the model is ~136 k tokens; new context accumulated into the cache is ~1.1 M tokens.
